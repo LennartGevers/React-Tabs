@@ -32,11 +32,18 @@ export type LoaderDataOf<F> =
 export type CtxOf<F> =
     F extends TabFeature<any, any, any, infer C, any> ? C : never;
 
+interface Params<TContext, TSettings, TMeta> {
+    context: TContext;
+    tab: Tab<TSettings>;
+    meta: TMeta;
+}
+
 export interface TabFeature<
     TSettings,
     TLoaderDeps,
     TLoaderData,
     TContext,
+    TMeta,
     K extends string = string,
 > {
     key: FeatureKey<K>;
@@ -44,13 +51,8 @@ export interface TabFeature<
     component: () => React.ReactNode;
     loadingComponent?: () => React.ReactNode;
     errorComponent?: (p: { error: unknown }) => React.ReactNode;
-    loaderDataDeps: (opts: {
-        context: TContext;
-        tab: Tab<TSettings>;
-    }) => TLoaderDeps;
-    loaderData: (deps: TLoaderDeps) => Promise<TLoaderData>;
-    onClose?: (tab: Tab<TSettings>, ctx: TContext) => Promise<void> | void;
-    onPersist?: (tab: Tab<TSettings>, ctx: TContext) => Promise<void> | void;
+    loaderDataDeps?: (params: Params<TContext, TSettings, TMeta>) => TLoaderDeps;
+    loaderData: TLoaderDeps extends unknown ? never : (deps: TLoaderDeps) => Promise<TLoaderData>;
 
     // Factory-provided
     featureContext: React.Context<{
@@ -58,19 +60,10 @@ export interface TabFeature<
         loaderData: TLoaderData;
         tabData: Tab<TSettings>;
     }>;
-    tabsContext: React.Context<{
-        addTab: (t: Tab<TSettings>) => void;
-        updateTab: (
-            id: string,
-            updater: (t: Tab<TSettings>) => Tab<TSettings>,
-        ) => void;
-        deleteTab: (id: string) => void;
-    }>;
 
     useLoaderData: () => TLoaderData;
     useTab: () => Tab<TSettings>;
     useContext: () => TContext;
-    useNavigate: (to: string | null) => void;
     useAddTab: () => (t: Tab<TSettings>) => void;
     useUpdateTab: () => (
         id: string,
@@ -80,7 +73,7 @@ export interface TabFeature<
 
     View: (p: {
         FallbackLoading?: React.ComponentType;
-        FallbackError?: React.ComponentType<{ error: unknown }>;
+        FallbackError?: React.ComponentType<{ error: string}>;
     }) => React.ReactElement | null;
 
     __tag: "TabFeature";
@@ -89,8 +82,7 @@ export interface TabFeature<
 export type TabsState = {
     tabs: Record<string, Tab<unknown>>;
     order: string[];
-    activeId: string | null;
-    loaderById: Record<string, LoaderStatus>;
+    activeIds: (string | null)[];
 
     addTab: (tab: Tab<unknown>) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
