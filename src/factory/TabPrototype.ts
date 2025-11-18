@@ -40,3 +40,10 @@ export type FactoryInputByKey<
   T extends readonly AnyTabPrototype[],
   Key extends FactoryKey<T>
 > = Extract<FactoryInput<T>, { key: Key }>;
+
+export function createTabPrototype<
+  Key extends string,
+  Schema extends SchemaWithLiteralKey<Key>
+>(prototype: TabPrototype<Key, Schema>): TabPrototype<Key, Schema> {
+  return prototype;
+}
