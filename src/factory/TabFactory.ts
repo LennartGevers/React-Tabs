@@ -1,49 +1,21 @@
 import { createElement, type ComponentType, type ReactElement } from 'react';
 import { z } from 'zod';
 
+import type {
+  AnyTabPrototype,
+  FactoryInput,
+  FactoryInputByKey,
+  FactoryKey,
+  PrototypeForKey,
+  PrototypeUnion,
+  SchemaTuple,
+} from './TabPrototype';
+
 export type ErrorComponentProps = { error?: string };
 
 export interface TabFactoryOptions {
   readonly ErrorComponent?: ComponentType<ErrorComponentProps>;
 }
-
-// Schemas must carry their literal key so that the discriminated union can
-// narrow values back to the correct prototype at runtime.
-type SchemaWithLiteralKey<Key extends string> = z.ZodType<
-  { key: Key } & Record<string, unknown>
->;
-
-export interface TabPrototype<
-  Key extends string,
-  Schema extends SchemaWithLiteralKey<Key>
-> {
-  readonly key: Key;
-  readonly schema: Schema;
-  readonly render: (value: z.infer<Schema>) => ReactElement;
-}
-
-type AnyTabPrototype = TabPrototype<string, SchemaWithLiteralKey<string>>;
-type PrototypeUnion<T extends readonly AnyTabPrototype[]> = T[number];
-type PrototypeSchema<T> = T extends TabPrototype<any, infer Schema> ? Schema : never;
-// Preserve tuple-ness so `z.discriminatedUnion` receives strongly typed schemas.
-type SchemaTuple<T extends readonly AnyTabPrototype[]> = {
-  [Index in keyof T]: PrototypeSchema<T[Index]>;
-};
-type PrototypeValue<T> = T extends TabPrototype<any, infer Schema>
-  ? z.infer<Schema>
-  : never;
-type FactoryInput<T extends readonly AnyTabPrototype[]> = PrototypeValue<
-  PrototypeUnion<T>
->;
-type FactoryKey<T extends readonly AnyTabPrototype[]> = PrototypeUnion<T>["key"];
-type PrototypeForKey<
-  T extends readonly AnyTabPrototype[],
-  Key extends FactoryKey<T>
-> = Extract<PrototypeUnion<T>, { key: Key }>;
-type FactoryInputByKey<
-  T extends readonly AnyTabPrototype[],
-  Key extends FactoryKey<T>
-> = Extract<FactoryInput<T>, { key: Key }>;
 
 export class TabFactory<Prototypes extends readonly AnyTabPrototype[]> {
   private readonly prototypeMap: Map<FactoryKey<Prototypes>, PrototypeUnion<Prototypes>>;

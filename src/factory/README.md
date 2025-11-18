@@ -6,25 +6,29 @@ This directory provides a schema-driven `TabFactory` utility for rendering tabs 
 
 ```tsx
 import { z } from 'zod';
-import { TabFactory } from '../factory/TabFactory';
+import { TabFactory, type TabPrototype } from '../factory';
 
-const infoTab = {
+const infoSchema = z.object({
+  key: z.literal('info'),
+  title: z.string(),
+});
+
+const infoTab: TabPrototype<'info', typeof infoSchema> = {
   key: 'info',
-  schema: z.object({
-    key: z.literal('info'),
-    title: z.string(),
-  }),
+  schema: infoSchema,
   render: ({ title }) => <h1>{title}</h1>,
-} as const;
+};
 
-const detailsTab = {
+const detailsSchema = z.object({
+  key: z.literal('details'),
+  description: z.string(),
+});
+
+const detailsTab: TabPrototype<'details', typeof detailsSchema> = {
   key: 'details',
-  schema: z.object({
-    key: z.literal('details'),
-    description: z.string(),
-  }),
+  schema: detailsSchema,
   render: ({ description }) => <p>{description}</p>,
-} as const;
+};
 
 const tabs = new TabFactory([infoTab, detailsTab]);
 
