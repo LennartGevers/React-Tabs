@@ -7,6 +7,8 @@ export interface TabFactoryOptions {
   readonly ErrorComponent?: ComponentType<ErrorComponentProps>;
 }
 
+// Schemas must carry their literal key so that the discriminated union can
+// narrow values back to the correct prototype at runtime.
 type SchemaWithLiteralKey<Key extends string> = z.ZodType<
   { key: Key } & Record<string, unknown>
 >;
@@ -23,6 +25,7 @@ export interface TabPrototype<
 type AnyTabPrototype = TabPrototype<string, SchemaWithLiteralKey<string>>;
 type PrototypeUnion<T extends readonly AnyTabPrototype[]> = T[number];
 type PrototypeSchema<T> = T extends TabPrototype<any, infer Schema> ? Schema : never;
+// Preserve tuple-ness so `z.discriminatedUnion` receives strongly typed schemas.
 type SchemaTuple<T extends readonly AnyTabPrototype[]> = {
   [Index in keyof T]: PrototypeSchema<T[Index]>;
 };
@@ -63,6 +66,7 @@ export class TabFactory<Prototypes extends readonly AnyTabPrototype[]> {
       throw new Error('TabFactory prototypes must have unique keys.');
     }
 
+    // Build once so every render call benefits from the cached union schema.
     const schemas = prototypes.map((prototype) => prototype.schema) as SchemaTuple<Prototypes>;
     this.unionSchema = z.discriminatedUnion('key', schemas);
     this.ErrorComponent = options?.ErrorComponent;
@@ -71,6 +75,8 @@ export class TabFactory<Prototypes extends readonly AnyTabPrototype[]> {
   public render(data: FactoryInput<Prototypes>): ReactElement;
   public render(data: unknown): ReactElement {
     try {
+      // Parse with the discriminated union, which simultaneously validates the
+      // payload and tells us which prototype to use.
       const parsed = this.unionSchema.parse(data);
       const key = parsed.key as FactoryKey<Prototypes>;
       const prototype = this.getPrototype(key);
@@ -102,6 +108,8 @@ export class TabFactory<Prototypes extends readonly AnyTabPrototype[]> {
 
   private serializeError(error: unknown): string | undefined {
     try {
+      // Provide useful debugging info to the fallback component while keeping
+      // the error serializable.
       return JSON.stringify(
         error instanceof Error
           ? { message: error.message, stack: error.stack }
